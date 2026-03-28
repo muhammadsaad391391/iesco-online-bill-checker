@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fetching IESCO Bill...</title>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+    <style>
+        body { 
+            margin: 0; 
+            padding: 0;
+            display: flex; 
+            flex-direction: column; 
+            justify-content: center; 
+            align-items: center; 
+            height: 100vh; 
+            background-color: #f8f9fa; /* Matches WordPress card background nicely */
+            font-family: 'Roboto', -apple-system, sans-serif; 
+            color: #333; 
+            text-align: center;
+        }
+        
+        .loader-container {
+            background: #ffffff;
+            padding: 40px;
+            border-radius: 12px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.05);
+            max-width: 400px;
+            width: 90%;
+        }
+
+        .spinner { 
+            width: 60px; 
+            height: 60px; 
+            border: 6px solid #e0e0e0; 
+            border-top-color: #0096ff; 
+            border-radius: 50%; 
+            animation: spin 1s linear infinite; 
+            margin: 0 auto 24px auto; 
+        }
+        
+        @keyframes spin { 
+            100% { transform: rotate(360deg); } 
+        }
+        
+        h2 { 
+            color: #0096ff; 
+            margin: 0 0 12px 0;
+            font-size: 24px;
+        }
+        
+        p { 
+            color: #6c757d; 
+            font-size: 15px;
+            line-height: 1.5;
+            margin: 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="loader-container" id="messageBox">
+        <div class="spinner"></div>
+        <h2>Fetching Your Bill...</h2>
+        <p>Securely connecting to the official PITC server. This usually takes 3 to 5 seconds.</p>
+    </div>
+
+    <script>
+        // Extract query parameters from the URL
+        const urlParams = new URLSearchParams(window.location.search);
+        
+        // Ensure params exist, otherwise fallback or show error
+        if (!urlParams.has('refNo')) {
+            document.getElementById('messageBox').innerHTML = `
+                <h2 style="color: #dc3545;">Missing Details</h2>
+                <p>Please provide a valid Reference Number or Customer ID.</p>
+            `;
+        } else {
+            // Fetch the actual bill HTML from our Node API
+            fetch('/api/bill?' + urlParams.toString())
+                .then(res => {
+                    // Attempt to parse text (HTML or error string)
+                    return res.text().then(text => ({
+                        status: res.status,
+                        ok: res.ok,
+                        text: text
+                    }));
+                })
+                .then(response => {
+                    if (response.ok && response.text.includes('<html')) {
+                        // Success! Replace the entire page with the actual bill
+                        document.open();
+                        document.write(response.text);
+                        document.close();
+                    } else {
+                        // Show the API error text
+                        document.getElementById('messageBox').innerHTML = `
+                            <h2 style="color: #dc3545;">Search Failed</h2>
+                            <p>${response.text}</p>
+                        `;
+                    }
+                })
+                .catch(err => {
+                    console.error("Fetch error:", err);
+                    document.getElementById('messageBox').innerHTML = `
+                        <h2 style="color: #dc3545;">Connection Error</h2>
+                        <p>Failed to connect to the server. Please check your internet or try again later.</p>
+                    `;
+                });
+        }
+    </script>
+</body>
+</html>
